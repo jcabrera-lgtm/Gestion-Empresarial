@@ -1,0 +1,45 @@
+services:
+  mongito:
+    image: mongo:8
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-nico}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-password}
+    volumes:
+      - mongo-data:/data/db
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: dockerfile.dev
+    ports:
+      - "3000:3000"
+    environment:
+      MONGO_URI: mongodb://${MONGO_USER:-nico}:${MONGO_PASSWORD:-password}@mongito:27017/${MONGO_DB:-gestion}?authSource=admin
+      IVA_RATE: ${IVA_RATE:-0.15}
+      TZ: America/Guayaquil
+    volumes:
+      - ./backend:/home/app
+      - /home/app/node_modules
+    depends_on:
+      - mongito
+    restart: on-failure
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: dockerfile.dev
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_PROXY_TARGET: http://backend:3000
+    volumes:
+      - ./frontend:/home/app
+      - /home/app/node_modules
+    depends_on:
+      - backend
+    restart: on-failure
+
+volumes:
+  mongo-data:
